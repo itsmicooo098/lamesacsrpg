@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Mesa — Point of Sale</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  height:100%;
+  background:#2c2c2e;
+  font-family:'Inter',sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.tablet-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100vw;
+  height:100vh;
+  padding:20px;
+  position:relative;
+}
+
+/* ── POWER BUTTON (right side of tablet) ── */
+.power-btn{
+  position:absolute;
+  right:calc(50% - min(590px, calc(50vw - 20px)) - 14px);
+  top:50%;
+  transform:translateY(-30px);
+  width:5px;
+  height:clamp(36px,5vh,52px);
+  background:#1a1a1a;
+  border-radius:0 3px 3px 0;
+  border:none;
+  cursor:pointer;
+  z-index:100;
+  transition:background 0.15s, transform 0.15s;
+  box-shadow:2px 0 6px rgba(0,0,0,0.4);
+}
+.power-btn:hover{background:#333;transform:translateY(-30px) scaleX(1.4);}
+.power-btn:active{background:#555;}
+
+/* ── TABLET FRAME ── */
+.tablet-frame{
+  background:#1c1c1e;
+  border-radius:clamp(18px,3vw,32px);
+  padding:clamp(10px,1.5vw,18px);
+  box-shadow:
+    0 0 0 1px #3a3a3c,
+    0 0 0 3px #141416,
+    0 40px 100px rgba(0,0,0,0.55),
+    inset 0 1px 0 #3a3a3c;
+  position:relative;
+  width:min(1180px, calc(100vw - 40px));
+  height:min(820px, calc(100vh - 40px));
+  flex-shrink:0;
+  transition:width 0.4s cubic-bezier(.4,0,.2,1), height 0.4s cubic-bezier(.4,0,.2,1);
+}
+
+.tablet-notch{
+  position:absolute;
+  top:clamp(5px,0.8vw,10px);
+  left:50%;
+  transform:translateX(-50%);
+  width:clamp(40px,5vw,70px);
+  height:clamp(3px,0.5vw,5px);
+  background:#2c2c2e;
+  border-radius:3px;
+}
+
+/* Volume buttons on left side (cosmetic) */
+.vol-btns{
+  position:absolute;
+  left:-6px;
+  top:22%;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  pointer-events:none;
+}
+.vol-btn{
+  width:5px;
+  height:clamp(26px,3.5vh,38px);
+  background:#1a1a1a;
+  border-radius:3px 0 0 3px;
+  box-shadow:-2px 0 5px rgba(0,0,0,0.3);
+}
+
+/* ── SCREEN WRAPPER (handles off state) ── */
+.tablet-screen-wrap{
+  width:100%;
+  height:100%;
+  border-radius:clamp(10px,1.8vw,20px);
+  overflow:hidden;
+  position:relative;
+}
+
+/* The black "off" overlay */
+.screen-off-overlay{
+  position:absolute;
+  inset:0;
+  background:#000;
+  z-index:200;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.7s cubic-bezier(.4,0,.2,1);
+  border-radius:inherit;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.screen-off-overlay.on{
+  opacity:1;
+  pointer-events:all;
+}
+/* Tiny glow dot when screen is off */
+.off-dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  background:#222;
+  opacity:0;
+  transition:opacity 0.4s 0.5s;
+}
+.screen-off-overlay.on .off-dot{opacity:1;}
+
+.tablet-screen{
+  width:100%;
+  height:100%;
+  background:#0f0f0f;
+  display:flex;
+  position:relative;
+  transition:opacity 0.6s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── LEFT PANEL ── */
+.pos-left{
+  display:flex;
+  flex-direction:column;
+  background:#0f0f0f;
+  overflow:hidden;
+  flex:1;
+  min-width:0;
+}
+
+.pos-header{
+  padding:clamp(12px,1.5vw,20px) clamp(14px,2vw,26px) clamp(10px,1.2vw,16px);
+  border-bottom:1px solid #1e1e1e;
+  flex-shrink:0;
+  display:flex;align-items:center;gap:12px;
+}
+.brand-badge{
+  width:clamp(28px,3vw,38px);height:clamp(28px,3vw,38px);
+  background:#1a1a1a;border:1px solid #2a2a2a;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(14px,1.6vw,20px);flex-shrink:0;
+}
+.pos-header h1{font-size:clamp(14px,1.6vw,20px);font-weight:700;color:#f2f2f2;letter-spacing:-0.3px;}
+.pos-header p{font-size:clamp(9px,0.9vw,12px);color:#555;margin-top:1px;}
+
+.search-wrap{
+  padding:clamp(7px,0.9vw,12px) clamp(14px,2vw,26px);
+  border-bottom:1px solid #1e1e1e;flex-shrink:0;
+}
+.search-inner{position:relative;display:flex;align-items:center;}
+.search-icon{position:absolute;left:10px;color:#444;pointer-events:none;}
+.search-input{
+  width:100%;
+  padding:clamp(6px,0.7vw,9px) 12px clamp(6px,0.7vw,9px) 32px;
+  background:#161616;border:1px solid #242424;border-radius:8px;
+  color:#f2f2f2;font-size:clamp(10px,1vw,13px);font-family:inherit;
+  outline:none;transition:border-color 0.2s;
+}
+.search-input::placeholder{color:#3a3a3a;}
+.search-input:focus{border-color:#3d3d3d;}
+.search-clear{
+  position:absolute;right:10px;background:none;border:none;
+  color:#444;cursor:pointer;font-size:16px;line-height:1;
+  display:none;padding:0;transition:color 0.15s;
+}
+.search-clear:hover{color:#fff;}
+
+.category-bar{
+  display:flex;gap:6px;
+  padding:clamp(7px,0.9vw,12px) clamp(14px,2vw,26px);
+  border-bottom:1px solid #1e1e1e;flex-shrink:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.category-bar::-webkit-scrollbar{display:none;}
+.cat-btn{
+  display:flex;align-items:center;gap:4px;
+  padding:clamp(4px,0.5vw,7px) clamp(10px,1.1vw,15px);
+  border-radius:999px;border:1px solid #252525;
+  background:transparent;color:#585858;
+  font-size:clamp(9px,0.9vw,12px);font-weight:500;
+  font-family:inherit;cursor:pointer;white-space:nowrap;
+  transition:all 0.2s cubic-bezier(.4,0,.2,1);
+}
+.cat-btn:hover{border-color:#555;color:#c0c0c0;}
+.cat-btn.active{background:#f2f2f2;border-color:#f2f2f2;color:#000;}
+
+.items-grid-wrap{
+  flex:1;overflow-y:auto;
+  padding:clamp(10px,1.3vw,18px) clamp(14px,2vw,26px) 20px;
+  scrollbar-width:thin;scrollbar-color:#1e1e1e transparent;
+}
+.items-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(clamp(90px,10vw,130px),1fr));
+  gap:clamp(7px,0.9vw,12px);
+}
+.no-results{grid-column:1/-1;text-align:center;padding:40px 0;color:#333;font-size:12px;}
+
+.item-card{
+  background:#161616;border:1px solid #1e1e1e;border-radius:10px;
+  padding:clamp(9px,1vw,14px) clamp(8px,0.9vw,12px) clamp(11px,1.2vw,16px);
+  cursor:pointer;
+  transition:background 0.2s, border-color 0.2s, transform 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s;
+  display:flex;flex-direction:column;gap:6px;user-select:none;
+}
+.item-card:hover{background:#1e1e1e;border-color:#333;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.item-card:active{transform:translateY(0);box-shadow:none;}
+.item-card.just-added{animation:pop 0.28s cubic-bezier(.4,0,.2,1);}
+@keyframes pop{0%{transform:scale(1);}40%{transform:scale(0.93);}70%{transform:scale(1.04);}100%{transform:scale(1);}}
+.item-emoji{font-size:clamp(14px,1.7vw,22px);line-height:1;}
+.item-name{font-size:clamp(9px,0.95vw,12px);font-weight:600;color:#d0d0d0;line-height:1.35;min-height:clamp(22px,2.5vw,32px);}
+.item-price{font-size:clamp(12px,1.3vw,16px);font-weight:700;color:#f2f2f2;margin-top:auto;}
+
+/* ── RIGHT ORDER DRAWER ── */
+.pos-right{
+  background:#0a0a0a;border-left:1px solid #1a1a1a;
+  display:flex;flex-direction:column;
+  width:0;overflow:hidden;
+  transition:width 0.48s cubic-bezier(.4,0,.2,1);
+  flex-shrink:0;
+}
+.pos-right.open{width:clamp(240px,28vw,310px);}
+
+.order-header{
+  padding:clamp(12px,1.5vw,20px) clamp(12px,1.5vw,18px) clamp(10px,1.2vw,14px);
+  border-bottom:1px solid #1a1a1a;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  opacity:0;transform:translateX(20px);
+  transition:opacity 0.3s 0.18s, transform 0.3s 0.18s cubic-bezier(.4,0,.2,1);
+}
+.pos-right.open .order-header{opacity:1;transform:translateX(0);}
+.order-header svg{color:#444;flex-shrink:0;}
+.order-header h2{font-size:clamp(12px,1.3vw,16px);font-weight:700;color:#f2f2f2;white-space:nowrap;}
+.order-badge{
+  margin-left:auto;background:#f2f2f2;color:#000;
+  font-size:10px;font-weight:700;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transform:scale(0);
+  transition:opacity 0.2s, transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+.order-badge.visible{opacity:1;transform:scale(1);}
+
+.order-items{
+  flex:1;overflow-y:auto;
+  padding:clamp(8px,1vw,12px) clamp(12px,1.5vw,18px);
+  scrollbar-width:thin;scrollbar-color:#1a1a1a transparent;
+  opacity:0;transition:opacity 0.3s 0.22s;
+}
+.pos-right.open .order-items{opacity:1;}
+.order-empty{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  height:100%;gap:8px;color:#282828;
+}
+.order-empty p{font-size:11px;}
+
+.order-line{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 0;border-bottom:1px solid #151515;
+  animation:slideIn 0.25s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.order-line:last-child{border-bottom:none;}
+.order-line-name{flex:1;font-size:clamp(9px,0.95vw,11px);font-weight:500;color:#b0b0b0;line-height:1.3;}
+.qty-controls{display:flex;align-items:center;gap:4px;}
+.qty-btn{
+  width:clamp(18px,2vw,24px);height:clamp(18px,2vw,24px);
+  border-radius:5px;border:1px solid #222;background:#161616;
+  color:#666;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;line-height:1;
+  transition:border-color 0.15s, color 0.15s, background 0.15s;
+}
+.qty-btn:hover{border-color:#f2f2f2;color:#f2f2f2;background:#1e1e1e;}
+.qty-num{font-size:11px;font-weight:600;min-width:14px;text-align:center;color:#f2f2f2;}
+.order-line-price{font-size:11px;font-weight:700;color:#f2f2f2;min-width:36px;text-align:right;}
+
+.order-totals{
+  padding:10px clamp(12px,1.5vw,18px);
+  border-top:1px solid #1a1a1a;flex-shrink:0;
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.3s 0.27s, transform 0.3s 0.27s cubic-bezier(.4,0,.2,1);
+}
+.pos-right.open .order-totals{opacity:1;transform:translateY(0);}
+.totals-row{display:flex;justify-content:space-between;font-size:clamp(9px,0.95vw,12px);color:#484848;padding:2px 0;}
+.totals-row.total-final{font-size:clamp(13px,1.4vw,17px);font-weight:700;color:#f2f2f2;padding-top:8px;margin-top:5px;border-top:1px solid #1e1e1e;}
+
+.change-calc{
+  padding:8px clamp(12px,1.5vw,18px);
+  border-top:1px solid #1a1a1a;flex-shrink:0;
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.3s 0.32s, transform 0.3s 0.32s cubic-bezier(.4,0,.2,1);
+}
+.pos-right.open .change-calc{opacity:1;transform:translateY(0);}
+.change-calc-label{font-size:9px;font-weight:600;color:#383838;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;}
+.change-input-row{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.change-prefix{font-size:12px;font-weight:700;color:#484848;flex-shrink:0;}
+.change-input{
+  flex:1;padding:6px 8px;background:#161616;border:1px solid #1e1e1e;border-radius:7px;
+  color:#f2f2f2;font-size:12px;font-weight:600;font-family:inherit;
+  outline:none;transition:border-color 0.2s;
+}
+.change-input::placeholder{color:#2a2a2a;}
+.change-input:focus{border-color:#333;}
+.change-result{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 9px;background:#161616;border:1px solid #1e1e1e;border-radius:7px;
+}
+.change-result-label{font-size:10px;color:#484848;}
+.change-result-amount{font-size:clamp(13px,1.4vw,16px);font-weight:700;color:#f2f2f2;}
+.change-result-amount.insufficient{color:#383838;}
+
+.order-actions{
+  padding:8px clamp(12px,1.5vw,18px) clamp(10px,1.2vw,14px);
+  display:flex;flex-direction:column;gap:5px;flex-shrink:0;
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.3s 0.37s, transform 0.3s 0.37s cubic-bezier(.4,0,.2,1);
+}
+.pos-right.open .order-actions{opacity:1;transform:translateY(0);}
+.checkout-btn{
+  width:100%;padding:clamp(9px,1vw,13px);
+  background:#f2f2f2;border:none;border-radius:9px;
+  color:#000;font-size:clamp(10px,1.1vw,13px);font-weight:700;
+  font-family:inherit;cursor:pointer;white-space:nowrap;
+  transition:background 0.2s, transform 0.15s;
+}
+.checkout-btn:hover{background:#d8d8d8;}
+.checkout-btn:active{transform:scale(0.97);}
+.checkout-btn:disabled{background:#161616;color:#2a2a2a;cursor:not-allowed;transform:none;border:1px solid #1e1e1e;}
+.clear-btn{
+  width:100%;padding:clamp(6px,0.8vw,9px);
+  background:transparent;border:1px solid #1e1e1e;border-radius:9px;
+  color:#383838;font-size:clamp(9px,0.9vw,11px);font-weight:500;
+  font-family:inherit;cursor:pointer;transition:border-color 0.2s, color 0.2s;
+}
+.clear-btn:hover{border-color:#484848;color:#888;}
+</style>
+</head>
+<body>
+
+<div class="tablet-wrap">
+
+  <!-- Side power button -->
+  <button class="power-btn" id="powerBtn" title="Power"></button>
+
+  <div class="tablet-frame">
+    <div class="tablet-notch"></div>
+
+    <!-- Cosmetic volume buttons -->
+    <div class="vol-btns">
+      <div class="vol-btn"></div>
+      <div class="vol-btn"></div>
+    </div>
+
+    <div class="tablet-screen-wrap">
+
+      <!-- Screen off overlay -->
+      <div class="screen-off-overlay" id="screenOff">
+        <div class="off-dot"></div>
+      </div>
+
+      <div class="tablet-screen" id="tabletScreen">
+
+        <!-- LEFT -->
+        <div class="pos-left">
+          <div class="pos-header">
+            <div class="brand-badge">🌮</div>
+            <div>
+              <h1>Point of Sale</h1>
+              <p>Tap an item to add to order</p>
+            </div>
+          </div>
+
+          <div class="search-wrap">
+            <div class="search-inner">
+              <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input class="search-input" id="searchInput" type="text" placeholder="Search items...">
+              <button class="search-clear" id="searchClear" onclick="clearSearch()">×</button>
+            </div>
+          </div>
+
+          <div class="category-bar" id="categoryBar"></div>
+
+          <div class="items-grid-wrap">
+            <div class="items-grid" id="itemsGrid"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT ORDER DRAWER -->
+        <div class="pos-right" id="posRight">
+          <div class="order-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="2"/>
+              <line x1="9" y1="12" x2="15" y2="12"/>
+              <line x1="9" y1="16" x2="13" y2="16"/>
+            </svg>
+            <h2>Current Order</h2>
+            <span class="order-badge" id="orderBadge">0</span>
+          </div>
+
+          <div class="order-items" id="orderItems">
+            <div class="order-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="2"/>
+              </svg>
+              <p>No items yet</p>
+            </div>
+          </div>
+
+          <div class="order-totals">
+            <div class="totals-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+            <div class="totals-row"><span>Tax (8%)</span><span id="tax">$0.00</span></div>
+            <div class="totals-row total-final"><span>Total</span><span id="total">$0.00</span></div>
+          </div>
+
+          <div class="change-calc">
+            <div class="change-calc-label">Change Calculator</div>
+            <div class="change-input-row">
+              <span class="change-prefix">$</span>
+              <input class="change-input" id="cashInput" type="number" min="0" step="0.01" placeholder="Cash received" oninput="calcChange()">
+            </div>
+            <div class="change-result">
+              <span class="change-result-label">Change due</span>
+              <span class="change-result-amount" id="changeAmount">—</span>
+            </div>
+          </div>
+
+          <div class="order-actions">
+            <button class="checkout-btn" id="checkoutBtn" disabled>Charge $0.00</button>
+            <button class="clear-btn" id="clearBtn">Clear Order</button>
+          </div>
+        </div>
+
+      </div><!-- /tablet-screen -->
+    </div><!-- /tablet-screen-wrap -->
+  </div><!-- /tablet-frame -->
+</div><!-- /tablet-wrap -->
+
+<script>
+const MENU = [
+  {id:1,  cat:"Starters",    name:"Guacamole & Chips",     price:6,    emoji:"🥑"},
+  {id:2,  cat:"Starters",    name:"Queso Fundido",          price:8,    emoji:"🫕"},
+  {id:3,  cat:"Starters",    name:"Elote Asado",            price:5,    emoji:"🌽"},
+  {id:4,  cat:"Starters",    name:"Nachos Supreme",         price:9,    emoji:"🧀"},
+  {id:5,  cat:"Tacos",       name:"Tacos al Pastor",        price:3,    emoji:"🌮"},
+  {id:6,  cat:"Tacos",       name:"Tacos de Asada",         price:3.50, emoji:"🌮"},
+  {id:7,  cat:"Tacos",       name:"Tacos de Pollo",         price:3,    emoji:"🌮"},
+  {id:8,  cat:"Tacos",       name:"Tacos de Pescado",       price:4,    emoji:"🌮"},
+  {id:9,  cat:"Tacos",       name:"Tacos Veganos",          price:3,    emoji:"🌮"},
+  {id:10, cat:"Burritos",    name:"Burrito de Carne Asada", price:10,   emoji:"🌯"},
+  {id:11, cat:"Burritos",    name:"Chicken Burrito",        price:9,    emoji:"🌯"},
+  {id:12, cat:"Burritos",    name:"Veggie Burrito",         price:8,    emoji:"🌯"},
+  {id:13, cat:"Burritos",    name:"California Burrito",     price:11,   emoji:"🌯"},
+  {id:14, cat:"Quesadillas", name:"Cheese Quesadilla",      price:6,    emoji:"🫓"},
+  {id:15, cat:"Quesadillas", name:"Chicken Quesadilla",     price:7,    emoji:"🫓"},
+  {id:16, cat:"Quesadillas", name:"Beef Quesadilla",        price:8,    emoji:"🫓"},
+  {id:17, cat:"Quesadillas", name:"Mushroom Quesadilla",    price:7,    emoji:"🫓"},
+  {id:18, cat:"Main Dishes", name:"Fajitas",                price:13,   emoji:"🍳"},
+  {id:19, cat:"Main Dishes", name:"Chiles Rellenos",        price:11,   emoji:"🫑"},
+  {id:20, cat:"Main Dishes", name:"Enchiladas Verdes",      price:10,   emoji:"🫔"},
+  {id:21, cat:"Main Dishes", name:"Carne Asada Plate",      price:14,   emoji:"🥩"},
+  {id:22, cat:"Desserts",    name:"Churros",                price:5,    emoji:"🍩"},
+  {id:23, cat:"Desserts",    name:"Flan",                   price:4,    emoji:"🍮"},
+  {id:24, cat:"Desserts",    name:"Tres Leches Cake",       price:6,    emoji:"🍰"},
+  {id:25, cat:"Drinks",      name:"Horchata",               price:3,    emoji:"🥛"},
+  {id:26, cat:"Drinks",      name:"Jamaica",                price:3,    emoji:"🧃"},
+  {id:27, cat:"Drinks",      name:"Agua de Limón",          price:3,    emoji:"🍋"},
+  {id:28, cat:"Drinks",      name:"Mexican Cola",           price:3,    emoji:"🥤"},
+  {id:29, cat:"Drinks",      name:"Lemon Soda",             price:3,    emoji:"🍹"},
+];
+
+const CATS = ["All","Starters","Tacos","Burritos","Quesadillas","Main Dishes","Desserts","Drinks"];
+const CAT_EMOJI = {All:"🍽️",Starters:"🥑",Tacos:"🌮",Burritos:"🌯",Quesadillas:"🫓","Main Dishes":"🍳",Desserts:"🍰",Drinks:"🥤"};
+
+let activeCategory = "All";
+let searchQuery = "";
+let order = {};
+let screenOn = true;
+
+/* ── POWER BUTTON ── */
+document.getElementById("powerBtn").addEventListener("click", () => {
+  const overlay = document.getElementById("screenOff");
+  screenOn = !screenOn;
+  if (!screenOn) {
+    overlay.classList.add("on");
+  } else {
+    overlay.classList.remove("on");
+  }
+});
+
+/* ── CATEGORY BAR ── */
+const catBar = document.getElementById("categoryBar");
+CATS.forEach(cat => {
+  const btn = document.createElement("button");
+  btn.className = "cat-btn" + (cat === activeCategory ? " active" : "");
+  btn.innerHTML = `<span>${CAT_EMOJI[cat]}</span>${cat}`;
+  btn.onclick = () => {
+    activeCategory = cat;
+    document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderItems();
+  };
+  catBar.appendChild(btn);
+});
+
+/* ── SEARCH ── */
+document.getElementById("searchInput").addEventListener("input", function() {
+  searchQuery = this.value.trim().toLowerCase();
+  document.getElementById("searchClear").style.display = searchQuery ? "block" : "none";
+  renderItems();
+});
+function clearSearch() {
+  document.getElementById("searchInput").value = "";
+  searchQuery = "";
+  document.getElementById("searchClear").style.display = "none";
+  renderItems();
+}
+
+function renderItems() {
+  const grid = document.getElementById("itemsGrid");
+  grid.innerHTML = "";
+  let items = activeCategory === "All" ? MENU : MENU.filter(i => i.cat === activeCategory);
+  if (searchQuery) items = items.filter(i => i.name.toLowerCase().includes(searchQuery));
+  if (items.length === 0) {
+    const msg = document.createElement("div");
+    msg.className = "no-results";
+    msg.textContent = "No items found.";
+    grid.appendChild(msg);
+    return;
+  }
+  items.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+    card.innerHTML = `<div class="item-emoji">${item.emoji}</div><div class="item-name">${item.name}</div><div class="item-price">$${item.price.toFixed(2)}</div>`;
+    card.onclick = () => {
+      addItem(item.id);
+      card.classList.remove("just-added");
+      void card.offsetWidth;
+      card.classList.add("just-added");
+    };
+    grid.appendChild(card);
+  });
+}
+
+function addItem(id) {
+  const wasEmpty = Object.keys(order).length === 0;
+  order[id] = (order[id] || 0) + 1;
+  if (wasEmpty) document.getElementById("posRight").classList.add("open");
+  renderOrder();
+}
+
+function changeQty(id, delta) {
+  order[id] = (order[id] || 0) + delta;
+  if (order[id] <= 0) delete order[id];
+  if (Object.keys(order).length === 0) {
+    document.getElementById("posRight").classList.remove("open");
+    document.getElementById("cashInput").value = "";
+    document.getElementById("changeAmount").textContent = "—";
+    document.getElementById("changeAmount").className = "change-result-amount";
+  }
+  renderOrder();
+}
+
+function getSubtotal() {
+  return Object.keys(order).map(Number).reduce((s,id) => s + (MENU.find(m=>m.id===id).price * order[id]), 0);
+}
+
+function calcChange() {
+  const cash = parseFloat(document.getElementById("cashInput").value);
+  const total = getSubtotal() * 1.08;
+  const el = document.getElementById("changeAmount");
+  if (isNaN(cash) || cash === 0) { el.textContent = "—"; el.className = "change-result-amount"; return; }
+  const change = cash - total;
+  el.textContent = change < 0 ? `-$${Math.abs(change).toFixed(2)}` : `$${change.toFixed(2)}`;
+  el.className = "change-result-amount" + (change < 0 ? " insufficient" : "");
+}
+
+function renderOrder() {
+  const container = document.getElementById("orderItems");
+  const ids = Object.keys(order).map(Number);
+  const badge = document.getElementById("orderBadge");
+  const count = ids.reduce((s,id) => s + order[id], 0);
+  badge.textContent = count;
+  badge.classList.toggle("visible", count > 0);
+
+  if (ids.length === 0) {
+    container.innerHTML = `<div class="order-empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg><p>No items yet</p></div>`;
+  } else {
+    container.innerHTML = "";
+    ids.forEach(id => {
+      const item = MENU.find(m=>m.id===id);
+      const line = document.createElement("div");
+      line.className = "order-line";
+      line.innerHTML = `<div class="order-line-name">${item.name}</div><div class="qty-controls"><button class="qty-btn" onclick="changeQty(${id},-1)">−</button><span class="qty-num">${order[id]}</span><button class="qty-btn" onclick="changeQty(${id},1)">+</button></div><div class="order-line-price">$${(item.price*order[id]).toFixed(2)}</div>`;
+      container.appendChild(line);
+    });
+  }
+
+  const sub = getSubtotal();
+  const tax = sub * 0.08;
+  const tot = sub + tax;
+  document.getElementById("subtotal").textContent = `$${sub.toFixed(2)}`;
+  document.getElementById("tax").textContent = `$${tax.toFixed(2)}`;
+  document.getElementById("total").textContent = `$${tot.toFixed(2)}`;
+  const btn = document.getElementById("checkoutBtn");
+  btn.disabled = ids.length === 0;
+  btn.textContent = ids.length === 0 ? "Charge $0.00" : `Charge $${tot.toFixed(2)}`;
+  calcChange();
+}
+
+document.getElementById("clearBtn").onclick = () => {
+  order = {};
+  document.getElementById("posRight").classList.remove("open");
+  document.getElementById("cashInput").value = "";
+  document.getElementById("changeAmount").textContent = "—";
+  document.getElementById("changeAmount").className = "change-result-amount";
+  renderOrder();
+};
+
+document.getElementById("checkoutBtn").onclick = () => {
+  const tot = document.getElementById("total").textContent;
+  const cash = parseFloat(document.getElementById("cashInput").value);
+  const totalNum = getSubtotal() * 1.08;
+  const change = !isNaN(cash) && cash > 0 ? `\nChange: $${Math.max(0, cash-totalNum).toFixed(2)}` : "";
+  alert(`Order complete!\n\nTotal: ${tot}${change}\n\nThank you!`);
+  order = {};
+  document.getElementById("posRight").classList.remove("open");
+  document.getElementById("cashInput").value = "";
+  document.getElementById("changeAmount").textContent = "—";
+  document.getElementById("changeAmount").className = "change-result-amount";
+  renderOrder();
+};
+
+renderItems();
+</script>
+</body>
+</html>
